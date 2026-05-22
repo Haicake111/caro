@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cờ Caro AI 5x5</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+            color: #333;
+        }
+        h1 { color: white; font-size: 2.2rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .subtitle { color: #ddd; margin-bottom: 20px; font-size: 0.9rem; }
+        
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        /* Tinh chỉnh Grid cho 5x5 */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, 70px);
+            grid-template-rows: repeat(5, 70px);
+            gap: 8px;
+            margin: 0 auto;
+        }
+
+        .cell {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .cell:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+        
+        .cell.x { color: #FF4757; animation: popIn 0.2s ease forwards; }
+        .cell.o { color: #2ED573; animation: popIn 0.2s ease forwards; }
+
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        .status { margin-top: 20px; font-size: 1.1rem; font-weight: 600; color: white; min-height: 25px; }
+        button {
+            margin-top: 15px; padding: 10px 25px; font-size: 1rem; font-weight: 600; font-family: 'Poppins', sans-serif;
+            color: #4e4376; background-color: white; border: none; border-radius: 20px; cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+    <h1>Cờ Caro vs AI</h1>
+    <div class="subtitle">Bàn cờ 5x5 - Cần 4 quân liên tiếp để thắng</div>
+    
+    <div class="game-container">
+        <div class="board" id="board"></div>
+        
+        <div class="status" id="status">Lượt của bạn (X)</div>
+        <button onclick="resetGame()">Chơi lại</button>
+    </div>
+
+    <script>
+        const SIZE = 5;
+        const WIN_COUNT = 4;
+        let boardState = Array(SIZE * SIZE).fill(' ');
+        let gameOver = false;
+        
+        const boardDiv = document.getElementById('board');
+        const statusDiv = document.getElementById('status');
+
+        // Khởi tạo HTML cho 25 ô
+        function initBoard() {
+            boardDiv.innerHTML = '';
+            for (let i = 0; i < SIZE * SIZE; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.onclick = () => makeMove(i);
+                boardDiv.appendChild(cell);
+            }
+        }
+
+        function updateUI() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach((cell, index) => {
+                if (boardState[index] !== ' ' && cell.innerText === '') {
+                    cell.innerText = boardState[index];
+                    cell.classList.add(boardState[index] === 'X' ? 'x' : 'o');
+                } else if (boardState[index] === ' ') {
+                    cell.innerText = '';
+                    cell.className = 'cell';
+                }
+            });
+        }
+
+        // Logic check win Frontend 5x5
+        function checkWinLocal(player) {
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c <= SIZE - WIN_COUNT; c++) {
+                    if (boardState[r*SIZE+c] == player && boardState[r*SIZE+c+1] == player && boardState[r*SIZE+c+2] == player && boardState[r*SIZE+c+3] == player) return true;
+                }
+            }
+            for (let c = 0; c < SIZE; c++) {
+                for (let r = 0; r <= SIZE - WIN_COUNT; r++) {
+                    if (boardState[r*SIZE+c] == player && boardState[(r+1)*SIZE+c] == player && boardState[(r+2)*SIZE+c] == player && boardState[(r+3)*SIZE+c] == player) return true;
+                }
+            }
+            for (let r = 0; r <= SIZE - WIN_COUNT; r++) {
+                for (let c = 0; c <= SIZE - WIN_COUNT; c++) {
+                    if (boardState[r*SIZE+c] == player && boardState[(r+1)*SIZE+c+1] == player && boardState[(r+2)*SIZE+c+2] == player && boardState[(r+3)*SIZE+c+3] == player) return true;
+                }
+            }
+            for (let r = 0; r <= SIZE - WIN_COUNT; r++) {
+                for (let c = WIN_COUNT - 1; c < SIZE; c++) {
+                    if (boardState[r*SIZE+c] == player && boardState[(r+1)*SIZE+c-1] == player && boardState[(r+2)*SIZE+c-2] == player && boardState[(r+3)*SIZE+c-3] == player) return true;
+                }
+            }
+            return false;
+        }
+
+        async function makeMove(index) {
+            if (gameOver || boardState[index] !== ' ') return;
+
+            boardState[index] = 'X';
+            updateUI();
+
+            if (checkWinLocal('X')) { statusDiv.innerText = "🎉 Chúc mừng! Bạn đã thắng!"; gameOver = true; return; }
+            if (!boardState.includes(' ')) { statusDiv.innerText = "🤝 Hòa!"; gameOver = true; return; }
+
+            statusDiv.innerText = "🤖 AI đang tính toán (hơi lâu một chút)...";
+            boardDiv.style.pointerEvents = 'none';
+
+            try {
+                const response = await fetch('/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ board: boardState })
+                });
+                
+                const data = await response.json();
+                const aiIndex = data.move;
+
+                if (aiIndex !== -1) {
+                    boardState[aiIndex] = 'O';
+                    updateUI();
+
+                    if (checkWinLocal('O')) {
+                        statusDiv.innerText = "💀 AI đã thắng!"; gameOver = true;
+                    } else if (!boardState.includes(' ')) {
+                        statusDiv.innerText = "🤝 Hòa!"; gameOver = true;
+                    } else {
+                        statusDiv.innerText = "Lượt của bạn (X)";
+                    }
+                }
+            } catch (error) {
+                statusDiv.innerText = "⚠️ Lỗi Server!";
+            } finally {
+                boardDiv.style.pointerEvents = 'auto';
+            }
+        }
+
+        function resetGame() {
+            boardState.fill(' ');
+            gameOver = false;
+            statusDiv.innerText = "Lượt của bạn (X)";
+            updateUI();
+        }
+
+        // Khởi động
+        initBoard();
+    </script>
+</body>
+</html>
